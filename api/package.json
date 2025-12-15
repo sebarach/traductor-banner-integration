@@ -1,0 +1,14 @@
+{
+  "name": "swa-api-functions",
+  "version": "1.0.0",
+  "description": "Azure Functions for Static Web App - API Proxy with Client Credentials",
+  "scripts": {
+    "start": "func start",
+    "test": "echo \"No tests yet\""
+  },
+  "dependencies": {
+    "@azure/msal-node": "^2.6.0",
+    "jsonwebtoken": "^9.0.3",
+    "jwks-rsa": "^3.2.0"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(npm run build:*)",
+      "Bash(func start)",
+      "Bash(npx azure-functions-core-tools@4 start)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm install:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(curl:*)",
+      "Bash(where:*)",
+      "Bash(npx swa deploy:*)",
+      "Bash(npm start)",
+      "Bash(cat:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add:*)"
+    ]
+  }
+}

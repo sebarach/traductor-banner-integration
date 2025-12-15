@@ -1,0 +1,9 @@
+# Azure Functions
+node_modules/
+local.settings.json
+*.log
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
