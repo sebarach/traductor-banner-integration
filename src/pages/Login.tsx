@@ -1,51 +1,57 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useMsal } from '@azure/msal-react'
-import { loginRequest } from '../config/authConfig'
-import { useAuth } from '../context/AuthContext'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
-import { Building2, Shield, AlertCircle } from 'lucide-react'
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useMsal } from "@azure/msal-react";
+import { loginRequest } from "../config/authConfig";
+import { useAuth } from "../context/AuthContext";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
+import { Building2, Shield, AlertCircle } from "lucide-react";
 
 function Login() {
-  const navigate = useNavigate()
-  const { instance, inProgress } = useMsal()
-  const { isAuthenticated, isLoading } = useAuth()
-  const [error, setError] = useState<string | null>(null)
-  const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const navigate = useNavigate();
+  const { instance, inProgress } = useMsal();
+  const { isAuthenticated, isLoading } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Redirigir si ya está autenticado
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      navigate('/dashboard', { replace: true })
+      navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate])
+  }, [isAuthenticated, isLoading, navigate]);
 
   const handleLogin = async () => {
     // Validar variables de entorno
-    const clientId = import.meta.env.VITE_AZURE_CLIENT_ID
-    const tenantId = import.meta.env.VITE_AZURE_TENANT_ID
+    const clientId = import.meta.env.VITE_AZURE_CLIENT_ID;
+    const tenantId = import.meta.env.VITE_AZURE_TENANT_ID;
 
     if (!clientId || !tenantId) {
-      setError('Error de configuración: Faltan variables de entorno en .env')
-      return
+      setError("Error de configuración: Faltan variables de entorno en .env");
+      return;
     }
 
-    setError(null)
-    setIsLoggingIn(true)
+    setError(null);
+    setIsLoggingIn(true);
 
     try {
-      await instance.loginRedirect(loginRequest)
+      await instance.loginRedirect(loginRequest);
     } catch (err) {
-      console.error('Error al iniciar sesión:', err)
-      setError('Error al iniciar sesión. Intenta nuevamente.')
-      setIsLoggingIn(false)
+      console.error("Error al iniciar sesión:", err);
+      setError("Error al iniciar sesión. Intenta nuevamente.");
+      setIsLoggingIn(false);
     }
-  }
+  };
 
-  const isButtonDisabled = inProgress !== 'none' || isLoggingIn || isLoading
+  const isButtonDisabled = inProgress !== "none" || isLoggingIn || isLoading;
 
   // Loading state
   if (isLoading) {
@@ -53,7 +59,7 @@ function Login() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-blue-950 flex items-center justify-center">
         <LoadingSpinner size="xl" text="Verificando sesión..." />
       </div>
-    )
+    );
   }
 
   return (
@@ -73,7 +79,7 @@ function Login() {
 
           <div className="space-y-2">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Sistema Universitario
+              Traductor Banner Integration
             </h1>
             <p className="text-sm text-muted-foreground">
               Gestión Académica - Traductor SIS
@@ -84,7 +90,9 @@ function Login() {
         {/* Card de Login */}
         <Card className="shadow-2xl border-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl text-center">Iniciar Sesión</CardTitle>
+            <CardTitle className="text-2xl text-center">
+              Iniciar Sesión
+            </CardTitle>
             <CardDescription className="text-center">
               Autenticación segura con Microsoft Azure AD
             </CardDescription>
@@ -92,7 +100,9 @@ function Login() {
           <CardContent className="space-y-4">
             {/* Error Alert */}
             {error && (
-              <Alert variant="destructive" className="animate-in slide-in-from-top-2">
+              <Alert
+                variant="destructive"
+                className="animate-in slide-in-from-top-2">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
@@ -103,8 +113,7 @@ function Login() {
               onClick={handleLogin}
               disabled={isButtonDisabled}
               size="lg"
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 h-12"
-            >
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 h-12">
               {isLoggingIn ? (
                 <span className="flex items-center justify-center gap-2">
                   <LoadingSpinner size="sm" />
@@ -113,11 +122,38 @@ function Login() {
               ) : (
                 <span className="flex items-center justify-center gap-3">
                   {/* Microsoft Logo SVG */}
-                  <svg className="h-5 w-5" viewBox="0 0 21 21" fill="currentColor">
-                    <rect x="1" y="1" width="9" height="9" fill="currentColor" />
-                    <rect x="1" y="11" width="9" height="9" fill="currentColor" />
-                    <rect x="11" y="1" width="9" height="9" fill="currentColor" />
-                    <rect x="11" y="11" width="9" height="9" fill="currentColor" />
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 21 21"
+                    fill="currentColor">
+                    <rect
+                      x="1"
+                      y="1"
+                      width="9"
+                      height="9"
+                      fill="currentColor"
+                    />
+                    <rect
+                      x="1"
+                      y="11"
+                      width="9"
+                      height="9"
+                      fill="currentColor"
+                    />
+                    <rect
+                      x="11"
+                      y="1"
+                      width="9"
+                      height="9"
+                      fill="currentColor"
+                    />
+                    <rect
+                      x="11"
+                      y="11"
+                      width="9"
+                      height="9"
+                      fill="currentColor"
+                    />
                   </svg>
                   <span className="font-semibold">Continuar con Microsoft</span>
                 </span>
@@ -142,7 +178,7 @@ function Login() {
         {/* Footer */}
         <div className="text-center space-y-2">
           <p className="text-xs text-muted-foreground">
-            ¿Problemas para iniciar sesión?{' '}
+            ¿Problemas para iniciar sesión?{" "}
             <a href="#" className="text-primary hover:underline font-medium">
               Contacta a soporte
             </a>
@@ -153,7 +189,7 @@ function Login() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default Login
+export default Login;

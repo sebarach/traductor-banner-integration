@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { IPublicClientApplication } from '@azure/msal-browser'
+import { useState } from "react";
+import { IPublicClientApplication } from "@azure/msal-browser";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,57 +7,58 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { User, Settings, LogOut, Loader2 } from 'lucide-react'
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User, Settings, LogOut, Loader2 } from "lucide-react";
 
 interface User {
-  name: string
-  email: string
-  photoUrl?: string
-  tenantId?: string
+  name: string;
+  email: string;
+  photoUrl?: string;
+  tenantId?: string;
 }
 
 interface UserDropdownProps {
-  user: User | null
-  instance: IPublicClientApplication
+  user: User | null;
+  instance: IPublicClientApplication;
 }
 
 export function UserDropdown({ user, instance }: UserDropdownProps) {
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    setIsLoggingOut(true)
+    setIsLoggingOut(true);
     try {
       await instance.logoutRedirect({
-        postLogoutRedirectUri: '/',
-      })
+        postLogoutRedirectUri: "/",
+      });
     } catch (err) {
-      console.error('Error al cerrar sesión:', err)
-      setIsLoggingOut(false)
+      console.error("Error al cerrar sesión:", err);
+      setIsLoggingOut(false);
     }
-  }
+  };
 
-  if (!user) return null
+  if (!user) return null;
 
   const initials = user.name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
     .toUpperCase()
-    .slice(0, 2)
+    .slice(0, 2);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="flex items-center gap-3 hover:bg-gray-800 dark:hover:bg-gray-900 h-auto px-2 py-2"
-        >
+          className="flex items-center gap-3 hover:bg-gray-800 dark:hover:bg-gray-900 h-auto px-2 py-2">
           <div className="text-right hidden md:block">
             <p className="text-white font-semibold text-sm">{user.name}</p>
-            <p className="text-gray-400 dark:text-gray-500 text-xs">{user.email}</p>
+            <p className="text-gray-400 dark:text-gray-500 text-xs">
+              {user.email}
+            </p>
           </div>
 
           <Avatar className="h-10 w-10 border-2 border-gray-700 dark:border-gray-800 ring-2 ring-transparent hover:ring-blue-500 transition-all">
@@ -109,8 +110,7 @@ export function UserDropdown({ user, instance }: UserDropdownProps) {
         <DropdownMenuItem
           onClick={handleLogout}
           disabled={isLoggingOut}
-          className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-700 dark:focus:text-red-300 focus:bg-red-50 dark:focus:bg-red-900/20"
-        >
+          className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-700 dark:focus:text-red-300 focus:bg-red-50 dark:focus:bg-red-900/20">
           {isLoggingOut ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -125,5 +125,5 @@ export function UserDropdown({ user, instance }: UserDropdownProps) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }
