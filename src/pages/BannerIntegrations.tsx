@@ -202,7 +202,7 @@ export default function BannerIntegrations() {
 
           {showGrid ? (
             filteredModules.length > 0 ? (
-              <TabsList className="grid w-full gap-4 bg-transparent px-6 pb-8 pt-4 md:grid-cols-2 xl:grid-cols-3">
+              <TabsList className="!grid !h-auto !items-stretch !justify-start w-full gap-4 bg-transparent px-6 pb-8 pt-4 md:grid-cols-2 xl:grid-cols-3">
                 {filteredModules.map((module) => {
                   const Icon = module.icon
                   const statusClasses =
