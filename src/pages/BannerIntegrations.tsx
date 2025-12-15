@@ -149,30 +149,37 @@ export default function BannerIntegrations() {
       />
 
       {/* Tabs Card */}
-      <Card className="shadow-lg">
+      <Card className="overflow-hidden shadow-lg">
         <Tabs value={activeTab} onValueChange={handleModuleSelect} className="w-full">
           {showGrid ? (
-            <div className="border-b border-border/60 px-6 py-6">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    Modulos disponibles
-                  </p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {activeModules} activos / {totalModules} totales
-                  </p>
-                </div>
-                <div className="relative w-full md:w-80">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                    placeholder="Buscar integraciones..."
-                    className="pl-10"
-                  />
+            <>
+              <div className="border-b border-border/60 px-6 py-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                      Modulos disponibles
+                    </p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {activeModules} activos / {totalModules} totales
+                    </p>
+                  </div>
+                  <div className="relative w-full md:w-80">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                      placeholder="Buscar integraciones..."
+                      className="pl-10"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+              <div className="px-6 pt-4">
+                <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                  Selecciona una integracion para revisar sus datos o usa el buscador para filtrar modulos.
+                </div>
+              </div>
+            </>
           ) : (
             <div className="flex flex-col gap-4 border-b border-border/60 px-6 py-6 md:flex-row md:items-center md:justify-between">
               <div className="flex items-start gap-4">
@@ -195,7 +202,7 @@ export default function BannerIntegrations() {
 
           {showGrid ? (
             filteredModules.length > 0 ? (
-              <TabsList className="grid w-full gap-4 bg-transparent px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
+              <TabsList className="grid w-full gap-4 bg-transparent px-6 pb-8 pt-4 md:grid-cols-2 xl:grid-cols-3">
                 {filteredModules.map((module) => {
                   const Icon = module.icon
                   const statusClasses =
@@ -247,15 +254,8 @@ export default function BannerIntegrations() {
                 </TabsContent>
               )
             })}
-
-          {showGrid && (
-            <div className="px-6 pb-8 text-sm text-muted-foreground">
-              Selecciona una integración para visualizar sus datos.
-            </div>
-          )}
         </Tabs>
       </Card>
     </div>
   )
 }
-
