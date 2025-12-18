@@ -92,7 +92,7 @@ const integrationModules: IntegrationModuleConfig[] = [
 
 export default function BannerIntegrations() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState(integrationModules[0].value);
+  const [activeTab, setActiveTab] = useState(integrationModules[0]?.value || "");
   const [showGrid, setShowGrid] = useState(true);
 
   const filteredModules = useMemo(() => {
@@ -114,7 +114,7 @@ export default function BannerIntegrations() {
   const activeModule =
     integrationModules.find((module) => module.value === activeTab) ??
     integrationModules[0];
-  const ActiveIcon = activeModule.icon;
+  const ActiveIcon = activeModule?.icon;
 
   const handleModuleSelect = (value: string) => {
     setActiveTab(value);

@@ -2,7 +2,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
-import { Home, Link as LinkIcon } from 'lucide-react'
+import { Home, Link as LinkIcon, Shield } from 'lucide-react'
+import { useAuthorization } from '@/context/AuthorizationContext'
 
 interface NavItem {
   name: string
@@ -10,17 +11,23 @@ interface NavItem {
   icon: React.ReactNode
 }
 
-const navItems: NavItem[] = [
-  { name: 'Inicio', path: '/dashboard', icon: <Home className="h-5 w-5" /> },
-  { name: 'Integraciones Banner', path: '/dashboard/banner-integrations', icon: <LinkIcon className="h-5 w-5" /> },
-]
-
 interface SidebarProps {
   isOpen: boolean
 }
 
 export function Sidebar({ isOpen }: SidebarProps) {
   const location = useLocation()
+  const { canAccessIntegrations, canManageUsers } = useAuthorization()
+
+  const navItems: NavItem[] = [
+    { name: 'Inicio', path: '/dashboard', icon: <Home className="h-5 w-5" /> },
+    ...(canAccessIntegrations() ? [
+      { name: 'Integraciones Banner', path: '/dashboard/banner-integrations', icon: <LinkIcon className="h-5 w-5" /> }
+    ] : []),
+    ...(canManageUsers() ? [
+      { name: 'Usuarios y Roles', path: '/dashboard/users-roles', icon: <Shield className="h-5 w-5" /> }
+    ] : []),
+  ]
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {

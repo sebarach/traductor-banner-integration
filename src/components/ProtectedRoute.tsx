@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useAuthorization } from "../context/AuthorizationContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -7,9 +8,10 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthorized, isLoading: authzLoading, permissions } = useAuthorization();
 
-  // Mientras se verifica la autenticación, mostrar spinner
-  if (isLoading) {
+  // Mientras se verifica la autenticación o autorización, mostrar spinner
+  if (isLoading || authzLoading) {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -31,7 +33,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           <p className="text-gray-600 dark:text-gray-400">
-            Verificando autenticación...
+            {isLoading ? "Verificando autenticación..." : "Verificando permisos..."}
           </p>
         </div>
       </div>
@@ -41,6 +43,16 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Si no está autenticado, redirigir al login
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Si está autenticado pero no autorizado
+  if (!authzLoading && !isAuthorized) {
+    // Si el usuario está inactivo, redirigir a account-disabled
+    if (permissions?.user?.status === "inactive") {
+      return <Navigate to="/account-disabled" replace />;
+    }
+    // Si no tiene permisos, redirigir a unauthorized
+    return <Navigate to="/unauthorized" replace />;
   }
 
   // Si está autenticado, mostrar el contenido

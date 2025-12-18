@@ -1,6 +1,5 @@
 const msal = require("@azure/msal-node");
-const jwt = require("jsonwebtoken");
-const jwksClient = require("jwks-rsa");
+const { authorizeRequest } = require("../shared/authMiddleware");
 
 const msalConfig = {
   auth: {
@@ -11,27 +10,6 @@ const msalConfig = {
 };
 
 const cca = new msal.ConfidentialClientApplication(msalConfig);
-
-// const client = jwksClient({
-//   jwksUri: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/discovery/v2.0/keys`,
-// });
-
-async function validateUserToken(token) {
-  if (!token) return false;
-
-  const cleanToken = token.replace("Bearer ", "").trim();
-  const decoded = jwt.decode(cleanToken);
-
-  if (!decoded) return false;
-
-  const expectedIssuer = `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/v2.0`;
-  const expectedAudience = process.env.SSO_CLIENT_ID;
-
-  const issuerOk = decoded.iss === expectedIssuer;
-  const audienceOk = decoded.aud === expectedAudience;
-
-  return issuerOk && audienceOk;
-}
 
 async function getAccessToken() {
   const tokenRequest = {
@@ -70,22 +48,24 @@ module.exports = async function (context, req) {
     // OJITO: Usar solo X-User-Token porque Azure Static Web Apps intercepta Authorization
     const userToken = req.headers["x-user-token"];
 
-    if (process.env.SSO_CLIENT_ID) {
-      const isValidToken = await validateUserToken(userToken);
+    // Validar autorización con middleware
+    const authResult = await authorizeRequest(userToken, route, req.method);
 
-      if (!isValidToken) {
-        context.log.error("Token de usuario inválido");
-        context.res = {
-          status: 401,
-          headers,
-          body: {
-            error: "Unauthorized",
-            message: "Debe estar autenticado para acceder a este recurso",
-          },
-        };
-        return;
-      }
+    if (!authResult.authorized) {
+      context.log.error("Autorización fallida:", authResult.error);
+      context.res = {
+        status: authResult.error.status,
+        headers,
+        body: {
+          error: authResult.error.status === 401 ? "Unauthorized" : "Forbidden",
+          message: authResult.error.message,
+          details: authResult.error.details,
+        },
+      };
+      return;
     }
+
+    context.log("Usuario autorizado:", authResult.user.email);
 
     // Obtener access token con Client Credentials
     const accessToken = await getAccessToken();

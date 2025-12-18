@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
-import { Building2, Shield, AlertCircle } from "lucide-react";
+import { Shield, AlertCircle } from "lucide-react";
 
 function Login() {
   const navigate = useNavigate();
@@ -71,8 +71,12 @@ function Login() {
           <div className="flex justify-center">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl blur-xl opacity-40 animate-pulse"></div>
-              <div className="relative bg-gradient-to-br from-blue-600 to-indigo-600 p-4 rounded-2xl shadow-2xl">
-                <Building2 className="h-12 w-12 text-white" strokeWidth={2} />
+              <div className="relative bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl">
+                <img
+                  src="/logo-tbi.png"
+                  alt="Logo TBI"
+                  className="h-16 w-16 object-contain"
+                />
               </div>
             </div>
           </div>

@@ -93,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
             }
           } catch (error) {
+            // Si falla obtener la foto, continuamos sin ella
             console.log("No se pudo obtener la foto del usuario:", error);
           }
 
@@ -126,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("Error de autenticacion");
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

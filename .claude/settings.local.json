@@ -19,7 +19,11 @@
       "Bash(npm start)",
       "Bash(cat:*)",
       "Bash(npx shadcn@latest init:*)",
-      "Bash(npx shadcn@latest add:*)"
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(find:*)",
+      "Bash(func start:*)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(cd:*)"
     ]
   }
 }

@@ -3,12 +3,17 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { MsalProvider } from '@azure/msal-react'
 import { PublicClientApplication, EventType } from '@azure/msal-browser'
 import { AuthProvider } from './context/AuthContext'
+import { AuthorizationProvider } from './context/AuthorizationContext'
 import { ThemeProvider } from './context/ThemeContext'
 import Login from './pages/Login'
 import Home from './pages/Home'
 import BannerIntegrations from './pages/BannerIntegrations'
+import Unauthorized from './pages/Unauthorized'
+import AccountDisabled from './pages/AccountDisabled'
+import UsersRoles from './pages/UsersRoles'
 import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
+import TabProtectedRoute from './components/TabProtectedRoute'
 
 // Verificar variables de entorno
 const clientId = import.meta.env.VITE_AZURE_CLIENT_ID
@@ -97,32 +102,46 @@ function App() {
     <ThemeProvider>
       <MsalProvider instance={msalInstance}>
         <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="/login" element={<Login />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Home />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/banner-integrations"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <BannerIntegrations />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-          </BrowserRouter>
+          <AuthorizationProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/unauthorized" element={<Unauthorized />} />
+                <Route path="/account-disabled" element={<AccountDisabled />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Home />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/banner-integrations"
+                  element={
+                    <TabProtectedRoute tabCode="integrations">
+                      <DashboardLayout>
+                        <BannerIntegrations />
+                      </DashboardLayout>
+                    </TabProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/users-roles"
+                  element={
+                    <TabProtectedRoute tabCode="users-roles">
+                      <DashboardLayout>
+                        <UsersRoles />
+                      </DashboardLayout>
+                    </TabProtectedRoute>
+                  }
+                />
+              </Routes>
+            </BrowserRouter>
+          </AuthorizationProvider>
         </AuthProvider>
       </MsalProvider>
     </ThemeProvider>
