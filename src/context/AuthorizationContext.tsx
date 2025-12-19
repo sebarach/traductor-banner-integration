@@ -49,7 +49,7 @@ export function AuthorizationProvider({ children }: { children: ReactNode }) {
 
       const apiClient = createApiClient(instance);
       const data = await apiClient.get<UserPermissions>(
-        `/auth/user/${encodeURIComponent(user.email)}`
+        `/auth/user-profile?email=${encodeURIComponent(user.email)}`
       );
 
       console.log("✅ DEBUG - Permisos recibidos:", data);

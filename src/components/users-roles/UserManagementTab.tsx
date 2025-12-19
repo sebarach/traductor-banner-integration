@@ -131,17 +131,8 @@ export function UserManagementTab({
         },
       },
       {
-        accessorKey: "lastAccessAt",
-        header: "Último Acceso",
-        cell: (info) => (
-          <span className="text-sm text-muted-foreground">
-            {formatDate(info.getValue() as string | null)}
-          </span>
-        ),
-      },
-      {
         accessorKey: "createdAt",
-        header: "Creado",
+        header: "Fecha de Creación",
         cell: (info) => (
           <span className="text-sm text-muted-foreground">
             {formatDate(info.getValue() as string)}

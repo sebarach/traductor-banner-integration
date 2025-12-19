@@ -45,14 +45,17 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/login" replace />;
   }
 
-  // Si está autenticado pero no autorizado
+  // Si está autenticado pero no autorizado (solo después de cargar)
   if (!authzLoading && !isAuthorized) {
     // Si el usuario está inactivo, redirigir a account-disabled
     if (permissions?.user?.status === "inactive") {
       return <Navigate to="/account-disabled" replace />;
     }
-    // Si no tiene permisos, redirigir a unauthorized
-    return <Navigate to="/unauthorized" replace />;
+    // Si no tiene permisos Y ya terminó de cargar, redirigir a unauthorized
+    // IMPORTANTE: Solo redirigir si permissions es null (no se encontraron permisos)
+    if (!permissions) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   // Si está autenticado, mostrar el contenido

@@ -1,7 +1,32 @@
-const mockAuthData = require("../data/mockAuthData");
+const msal = require("@azure/msal-node");
 const jwt = require("jsonwebtoken");
 
-// Validar token de usuario (reutilizar lógica de banner/index.js)
+// Configuración MSAL para Client Credentials (igual que banner)
+const msalConfig = {
+  auth: {
+    clientId: process.env.API_CLIENT_ID,
+    authority: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}`,
+    clientSecret: process.env.API_CLIENT_SECRET,
+  },
+};
+
+const cca = new msal.ConfidentialClientApplication(msalConfig);
+
+// Obtener Access Token con Client Credentials
+async function getAccessToken() {
+  const tokenRequest = {
+    scopes: [process.env.API_SCOPE],
+  };
+
+  try {
+    const response = await cca.acquireTokenByClientCredential(tokenRequest);
+    return response.accessToken;
+  } catch (error) {
+    throw error;
+  }
+}
+
+// Validar ID Token del usuario (SSO)
 async function validateUserToken(token) {
   if (!token) return null;
 
@@ -27,9 +52,53 @@ async function validateUserToken(token) {
   return null;
 }
 
+// Transformar respuesta de APIM a formato del frontend
+function transformUserProfileResponse(apiData) {
+  // Transformar modules array a objeto de permisos
+  const permissions = {};
+
+  if (apiData.modules && Array.isArray(apiData.modules)) {
+    apiData.modules.forEach(module => {
+      const moduleCode = module.moduleCode.toLowerCase();
+
+      // Mapear códigos de módulo de APIM a códigos del frontend
+      let frontendModuleCode = moduleCode;
+      if (moduleCode === 'int') {
+        frontendModuleCode = 'integrations';
+      } else if (moduleCode === 'usr' || moduleCode === 'users' || moduleCode === 'user') {
+        frontendModuleCode = 'users-roles';
+      }
+
+      // Si tiene múltiples permisos, tomar el más alto (WRITE > READ)
+      if (module.permissions && Array.isArray(module.permissions)) {
+        if (module.permissions.includes('WRITE')) {
+          permissions[frontendModuleCode] = 'WRITE';
+        } else if (module.permissions.includes('READ')) {
+          permissions[frontendModuleCode] = 'READ';
+        }
+      }
+    });
+  }
+
+  return {
+    user: {
+      userId: apiData.userId,
+      email: apiData.email,
+      displayName: apiData.displayName,
+      roleId: apiData.role?.roleId,
+      status: apiData.status,
+      lastAccessAt: apiData.lastAccessAt,
+      createdAt: apiData.userCreatedAt,
+    },
+    role: apiData.role,
+    permissions: permissions,
+  };
+}
+
 module.exports = async function (context, req) {
   const route = context.bindingData.route || "";
 
+  // CORS headers
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -37,371 +106,154 @@ module.exports = async function (context, req) {
     "Content-Type": "application/json",
   };
 
+  // Handle OPTIONS preflight
   if (req.method === "OPTIONS") {
-    context.res = { status: 204, headers };
+    context.res = {
+      status: 204,
+      headers,
+    };
     return;
   }
 
   try {
-    // Validar token
+    // Validar ID Token del usuario (SSO)
     const userToken = req.headers["x-user-token"];
     const tokenData = await validateUserToken(userToken);
 
     if (!tokenData) {
+      context.log.error("❌ Token inválido o no proporcionado");
       context.res = {
         status: 401,
         headers,
-        body: { error: "Unauthorized", message: "Token inválido o expirado" },
-      };
-      return;
-    }
-
-    const userEmail = tokenData.email;
-
-    // Rutas públicas (después de autenticación)
-    if (route === "user" || route.startsWith("user/")) {
-      // GET /api/auth/user/:email - Obtener info del usuario y permisos
-      const emailParam = route.replace("user/", "") || userEmail;
-
-      context.log("🔍 DEBUG - Route:", route);
-      context.log("🔍 DEBUG - Email from token:", userEmail);
-      context.log("🔍 DEBUG - Email param:", emailParam);
-      context.log("🔍 DEBUG - Todos los usuarios:", mockAuthData.users.map(u => u.email));
-
-      const userPermissions = mockAuthData.getUserPermissions(emailParam);
-
-      context.log("🔍 DEBUG - Permisos encontrados:", userPermissions);
-
-      if (!userPermissions) {
-        context.log("❌ Usuario no encontrado en mock data");
-        context.res = {
-          status: 404,
-          headers,
-          body: {
-            error: "UserNotFound",
-            message: "Usuario no autorizado en el sistema",
-            userEmail: emailParam
-          },
-        };
-        return;
-      }
-
-      // Actualizar último acceso
-      const user = mockAuthData.users.find(u => u.email.toLowerCase() === emailParam.toLowerCase());
-      if (user) {
-        user.lastAccessAt = new Date().toISOString();
-      }
-
-      context.res = {
-        status: 200,
-        headers,
         body: {
-          user: {
-            userId: userPermissions.user.userId,
-            email: userPermissions.user.email,
-            displayName: userPermissions.user.displayName,
-            status: userPermissions.user.status,
-            lastAccessAt: userPermissions.user.lastAccessAt,
-          },
-          role: userPermissions.role,
-          permissions: userPermissions.permissions,
+          error: "Unauthorized",
+          message: "Token inválido o expirado"
         },
       };
       return;
     }
 
-    // Para el resto de rutas, verificar que el usuario sea administrador
-    const userPermissions = mockAuthData.getUserPermissions(userEmail);
+    context.log("✅ Usuario autenticado:", tokenData.email);
+    context.log("🔍 Route capturada:", route);
+    context.log("🔍 Query params:", req.query);
 
-    if (!userPermissions || userPermissions.user.roleId !== 1) {
+    // Obtener access token con Client Credentials para llamar a APIM
+    const accessToken = await getAccessToken();
+    context.log("✅ Access Token obtenido");
+
+    // Construir URL de APIM
+    // API_BASE_URL ya incluye "traductor-sis", solo agregamos /api/auth/
+    let apiUrl = `${process.env.API_BASE_URL}/api/auth/${route}`;
+
+    // Agregar query parameters del request original
+    if (req.query && Object.keys(req.query).length > 0) {
+      const queryString = Object.entries(req.query)
+        .map(
+          ([key, value]) =>
+            `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+        )
+        .join("&");
+      apiUrl += `?${queryString}`;
+    }
+
+    context.log("📡 Llamando a APIM:", apiUrl);
+
+    // Hacer request a APIM con Access Token
+    const response = await fetch(apiUrl, {
+      method: req.method || "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "Ocp-Apim-Subscription-Key": process.env.APIM_SUBSCRIPTION_KEY || "",
+      },
+      body:
+        req.method !== "GET" && req.body ? JSON.stringify(req.body) : undefined,
+    });
+
+    const rawBody = await response.text();
+    let data = null;
+
+    if (rawBody) {
+      try {
+        data = JSON.parse(rawBody);
+      } catch (parseError) {
+        data = rawBody;
+      }
+    }
+
+    if (!response.ok) {
+      context.log.error("❌ Error de APIM:", response.status, data);
       context.res = {
-        status: 403,
+        status: response.status,
         headers,
-        body: {
-          error: "Forbidden",
-          message: "Solo administradores pueden acceder a esta función"
+        body: data || {
+          error: "ApiError",
+          message: `La API respondió con el estado ${response.status}.`,
         },
       };
       return;
     }
 
-    // Rutas administrativas
-    if (route === "users" && req.method === "GET") {
-      // GET /api/auth/users - Listar todos los usuarios
-      const usersWithRoles = mockAuthData.users.map(user => {
-        const role = mockAuthData.roles.find(r => r.roleId === user.roleId);
-        return { ...user, role };
+    // Transformar respuesta según el endpoint
+    if (route === "user-profile") {
+      data = transformUserProfileResponse(data);
+      context.log("✅ Perfil de usuario transformado:", {
+        email: data.user.email,
+        role: data.role.roleName,
+        permissions: data.permissions
       });
-
-      context.res = {
-        status: 200,
-        headers,
-        body: usersWithRoles,
-      };
-      return;
+    } else if (route === "users" && req.method === "GET") {
+      // Transformar lista de usuarios
+      data = data.map(user => ({
+        userId: user.userId,
+        email: user.email,
+        displayName: user.displayName,
+        roleId: user.role.roleId,
+        status: user.status,
+        lastAccessAt: user.lastAccessAt,
+        createdAt: user.userCreatedAt,
+        createdBy: user.createdBy || "SYSTEM",
+        role: user.role
+      }));
+      context.log("✅ Lista de usuarios transformada:", data.length, "usuarios");
+    } else if (route === "roles" && req.method === "GET") {
+      // Transformar lista de roles - asegurar que permissions sea un array
+      data = data.map(role => ({
+        ...role,
+        permissions: role.permissions || [],
+        permissionCount: role.permissions ? role.permissions.length : 0,
+        userCount: role.userCount || 0
+      }));
+      context.log("✅ Lista de roles transformada:", data.length, "roles");
+    } else if (route === "modules" && req.method === "GET") {
+      // Transformar lista de módulos
+      data = data.map(module => ({
+        moduleId: module.id,
+        moduleCode: module.moduleCode,
+        moduleName: module.moduleName,
+        moduleDescription: module.moduleDescription,
+        iconName: module.iconName || "Layers",
+        routePattern: module.routePattern,
+        displayOrder: parseInt(module.displayOrder) || 0,
+        isActive: module.isActive === 1 || module.isActive === true
+      }));
+      context.log("✅ Lista de módulos transformada:", data.length, "módulos");
     }
 
-    if (route === "users" && req.method === "POST") {
-      // POST /api/auth/users - Crear nuevo usuario
-      const { email, displayName, roleId, status } = req.body;
-
-      if (!email || !displayName || !roleId) {
-        context.res = {
-          status: 400,
-          headers,
-          body: {
-            error: "BadRequest",
-            message: "Faltan campos requeridos: email, displayName, roleId"
-          },
-        };
-        return;
-      }
-
-      // Verificar si el email ya existe
-      const existingUser = mockAuthData.users.find(
-        u => u.email.toLowerCase() === email.toLowerCase()
-      );
-
-      if (existingUser) {
-        context.res = {
-          status: 409,
-          headers,
-          body: {
-            error: "Conflict",
-            message: "Ya existe un usuario con este email"
-          },
-        };
-        return;
-      }
-
-      // Crear nuevo usuario
-      const newUser = {
-        userId: mockAuthData.users.length + 1,
-        email,
-        displayName,
-        roleId: parseInt(roleId),
-        status: status || "active",
-        lastAccessAt: null,
-        createdAt: new Date().toISOString(),
-        createdBy: userEmail,
-        photoUrl: null,
-        tenantId: null,
-      };
-
-      mockAuthData.users.push(newUser);
-
-      context.res = {
-        status: 201,
-        headers,
-        body: newUser,
-      };
-      return;
-    }
-
-    if (route.startsWith("users/") && req.method === "PUT") {
-      // PUT /api/auth/users/:email - Actualizar usuario
-      const targetEmail = decodeURIComponent(route.replace("users/", ""));
-      const { roleId, status } = req.body;
-
-      const userIndex = mockAuthData.users.findIndex(
-        u => u.email.toLowerCase() === targetEmail.toLowerCase()
-      );
-
-      if (userIndex === -1) {
-        context.res = {
-          status: 404,
-          headers,
-          body: { error: "NotFound", message: "Usuario no encontrado" },
-        };
-        return;
-      }
-
-      // Actualizar usuario
-      if (roleId !== undefined) {
-        mockAuthData.users[userIndex].roleId = parseInt(roleId);
-      }
-      if (status !== undefined) {
-        mockAuthData.users[userIndex].status = status;
-      }
-      mockAuthData.users[userIndex].updatedAt = new Date().toISOString();
-      mockAuthData.users[userIndex].updatedBy = userEmail;
-
-      context.res = {
-        status: 200,
-        headers,
-        body: mockAuthData.users[userIndex],
-      };
-      return;
-    }
-
-    if (route === "roles" && req.method === "GET") {
-      // GET /api/auth/roles - Listar roles con cantidad de permisos
-      const rolesWithStats = mockAuthData.roles.map(role => {
-        const permissions = mockAuthData.rolePermissions.filter(rp => rp.roleId === role.roleId);
-        const userCount = mockAuthData.users.filter(u => u.roleId === role.roleId).length;
-
-        return {
-          ...role,
-          permissionCount: permissions.length,
-          userCount,
-          permissions: permissions.map(rp => {
-            const module = mockAuthData.modules.find(m => m.moduleId === rp.moduleId);
-            return {
-              moduleCode: module?.moduleCode,
-              moduleName: module?.moduleName,
-              permissionType: rp.permissionType,
-            };
-          }),
-        };
-      });
-
-      context.res = {
-        status: 200,
-        headers,
-        body: rolesWithStats,
-      };
-      return;
-    }
-
-    if (route === "roles" && req.method === "POST") {
-      // POST /api/auth/roles - Crear nuevo rol
-      const { roleName, roleDescription, permissions } = req.body;
-
-      if (!roleName || !permissions || !Array.isArray(permissions)) {
-        context.res = {
-          status: 400,
-          headers,
-          body: {
-            error: "BadRequest",
-            message: "Faltan campos: roleName, permissions[]"
-          },
-        };
-        return;
-      }
-
-      const newRoleId = Math.max(...mockAuthData.roles.map(r => r.roleId)) + 1;
-
-      const newRole = {
-        roleId: newRoleId,
-        roleName,
-        roleDescription: roleDescription || null,
-        isSystemRole: false,
-        createdAt: new Date().toISOString(),
-        createdBy: userEmail,
-      };
-
-      mockAuthData.roles.push(newRole);
-
-      // Agregar permisos
-      permissions.forEach((perm, index) => {
-        const module = mockAuthData.modules.find(m => m.moduleCode === perm.moduleCode);
-        if (module) {
-          const newPermId = Math.max(...mockAuthData.rolePermissions.map(rp => rp.permissionId)) + index + 1;
-          mockAuthData.rolePermissions.push({
-            permissionId: newPermId,
-            roleId: newRoleId,
-            moduleId: module.moduleId,
-            permissionType: perm.permissionType,
-          });
-        }
-      });
-
-      context.res = {
-        status: 201,
-        headers,
-        body: newRole,
-      };
-      return;
-    }
-
-    if (route.startsWith("roles/") && req.method === "PUT") {
-      // PUT /api/auth/roles/:id - Actualizar rol
-      const roleId = parseInt(route.replace("roles/", ""));
-      const { roleName, roleDescription, permissions } = req.body;
-
-      const roleIndex = mockAuthData.roles.findIndex(r => r.roleId === roleId);
-
-      if (roleIndex === -1) {
-        context.res = {
-          status: 404,
-          headers,
-          body: { error: "NotFound", message: "Rol no encontrado" },
-        };
-        return;
-      }
-
-      // No permitir editar roles del sistema
-      if (mockAuthData.roles[roleIndex].isSystemRole) {
-        context.res = {
-          status: 403,
-          headers,
-          body: {
-            error: "Forbidden",
-            message: "No se pueden modificar roles del sistema"
-          },
-        };
-        return;
-      }
-
-      // Actualizar rol
-      if (roleName) mockAuthData.roles[roleIndex].roleName = roleName;
-      if (roleDescription !== undefined) mockAuthData.roles[roleIndex].roleDescription = roleDescription;
-      mockAuthData.roles[roleIndex].updatedAt = new Date().toISOString();
-      mockAuthData.roles[roleIndex].updatedBy = userEmail;
-
-      // Actualizar permisos si se proporcionan
-      if (permissions && Array.isArray(permissions)) {
-        // Eliminar permisos existentes
-        mockAuthData.rolePermissions = mockAuthData.rolePermissions.filter(rp => rp.roleId !== roleId);
-
-        // Agregar nuevos permisos
-        permissions.forEach((perm, index) => {
-          const module = mockAuthData.modules.find(m => m.moduleCode === perm.moduleCode);
-          if (module) {
-            const newPermId = Math.max(...mockAuthData.rolePermissions.map(rp => rp.permissionId)) + index + 1;
-            mockAuthData.rolePermissions.push({
-              permissionId: newPermId,
-              roleId: roleId,
-              moduleId: module.moduleId,
-              permissionType: perm.permissionType,
-            });
-          }
-        });
-      }
-
-      context.res = {
-        status: 200,
-        headers,
-        body: mockAuthData.roles[roleIndex],
-      };
-      return;
-    }
-
-    if (route === "modules" && req.method === "GET") {
-      // GET /api/auth/modules - Listar módulos disponibles
-      context.res = {
-        status: 200,
-        headers,
-        body: mockAuthData.modules,
-      };
-      return;
-    }
-
-    // Ruta no encontrada
     context.res = {
-      status: 404,
+      status: response.status,
       headers,
-      body: { error: "NotFound", message: `Ruta no encontrada: ${route}` },
+      body: data,
     };
-
   } catch (error) {
-    context.log.error("Error in auth function:", error);
+    context.log.error("❌ Error in auth proxy function:", error);
     context.res = {
       status: 500,
       headers,
       body: {
         error: "InternalServerError",
         message: error.message,
+        route: route,
       },
     };
   }
