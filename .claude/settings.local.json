@@ -23,7 +23,8 @@
       "Bash(cd:*)",
       "Bash(tree:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nImplement modules endpoint and fix authorization system\n\n- Add /api/auth/modules endpoint with proper APIM proxy and transformation\n- Transform APIM module fields \\(id → moduleId, isActive number → boolean\\)\n- Enable modules data loading in UsersRoles page for roles permissions tab\n- Fix ProtectedRoute to prevent unauthorized redirect on page reload\n- Remove ''Last Access'' column from users table, keep only ''Created Date''\n- Fix roles permissions to ensure permissions array is always defined\n- Add CLAUDE.md documentation for token optimization\n- Delete obsolete AUTORIZACION.md file\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nImplement modules endpoint and fix authorization system\n\n- Add /api/auth/modules endpoint with proper APIM proxy and transformation\n- Transform APIM module fields \\(id → moduleId, isActive number → boolean\\)\n- Enable modules data loading in UsersRoles page for roles permissions tab\n- Fix ProtectedRoute to prevent unauthorized redirect on page reload\n- Remove ''Last Access'' column from users table, keep only ''Created Date''\n- Fix roles permissions to ensure permissions array is always defined\n- Add CLAUDE.md documentation for token optimization\n- Delete obsolete AUTORIZACION.md file\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)"
     ]
   }
 }
