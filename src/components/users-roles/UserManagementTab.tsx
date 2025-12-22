@@ -53,8 +53,9 @@ export function UserManagementTab({
 
     try {
       const apiClient = createApiClient(instance);
-      await apiClient.put(`/auth/users/${encodeURIComponent(user.email)}`, {
+      await apiClient.put(`/auth/users/${user.userId}`, {
         status: newStatus,
+        updatedBy: "system",
       });
 
       toast({

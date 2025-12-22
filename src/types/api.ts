@@ -108,3 +108,19 @@ export interface ApiError {
   status: number
   details?: unknown
 }
+
+export interface CreateUserRequest {
+  email: string
+  displayName: string
+  roleId: number
+  status: string
+  createdBy: string
+}
+
+export interface UpdateUserRequest {
+  email?: string
+  displayName?: string
+  roleId?: number
+  status?: string
+  updatedBy: string
+}

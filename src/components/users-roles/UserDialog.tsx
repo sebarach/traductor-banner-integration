@@ -83,10 +83,12 @@ export function UserDialog({
       const apiClient = createApiClient(instance);
 
       if (user) {
-        // Editar usuario existente
-        await apiClient.put(`/auth/users/${encodeURIComponent(user.email)}`, {
+        await apiClient.put(`/auth/users/${user.userId}`, {
+          email: formData.email,
+          displayName: formData.displayName,
           roleId: parseInt(formData.roleId),
           status: formData.status,
+          updatedBy: "system",
         });
 
         toast({
@@ -94,12 +96,12 @@ export function UserDialog({
           description: "El usuario ha sido actualizado correctamente",
         });
       } else {
-        // Crear nuevo usuario
         await apiClient.post("/auth/users", {
           email: formData.email,
           displayName: formData.displayName,
           roleId: parseInt(formData.roleId),
           status: formData.status,
+          createdBy: "system",
         });
 
         toast({
@@ -159,22 +161,24 @@ export function UserDialog({
               )}
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="displayName">
-                Nombre Completo <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="displayName"
-                type="text"
-                placeholder="Nombre completo del usuario"
-                value={formData.displayName}
-                onChange={(e) =>
-                  setFormData({ ...formData, displayName: e.target.value })
-                }
-                disabled={!!user || loading}
-                required
-              />
-            </div>
+{!user && (
+              <div className="grid gap-2">
+                <Label htmlFor="displayName">
+                  Nombre Completo <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="displayName"
+                  type="text"
+                  placeholder="Nombre completo del usuario"
+                  value={formData.displayName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, displayName: e.target.value })
+                  }
+                  disabled={loading}
+                  required
+                />
+              </div>
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="role">

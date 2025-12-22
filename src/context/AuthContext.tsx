@@ -58,19 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
 
             if (response.accessToken) {
-              const userInfoResponse = await fetch(
-                "https://graph.microsoft.com/v1.0/me",
-                {
-                  headers: {
-                    Authorization: `Bearer ${response.accessToken}`,
-                  },
-                }
-              );
-
-              if (userInfoResponse.ok) {
-                const graphUserData = await userInfoResponse.json();
-              }
-
               const photoResponse = await fetch(
                 "https://graph.microsoft.com/v1.0/me/photo/$value",
                 {

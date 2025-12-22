@@ -17,7 +17,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import type { RoleWithStats, Module, PermissionType } from "@/types/auth";
-import { Layers } from "lucide-react";
 
 interface RoleDialogProps {
   open: boolean;
@@ -162,8 +161,9 @@ export function RoleDialog({
     }
   };
 
-  const selectedCount = Object.values(permissions).filter((p) => p !== null)
-    .length;
+  const selectedCount = Object.values(permissions).filter(
+    (p) => p !== null
+  ).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -229,8 +229,8 @@ export function RoleDialog({
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground mb-4">
-                Selecciona los módulos y define si el rol tiene permisos de
-                solo lectura (R) o lectura y escritura (RW)
+                Selecciona los módulos y define si el rol tiene permisos de solo
+                lectura (R) o lectura y escritura (RW)
               </p>
 
               <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
@@ -241,8 +241,7 @@ export function RoleDialog({
                   return (
                     <div
                       key={module.moduleId}
-                      className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                    >
+                      className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                       <Checkbox
                         id={`module-${module.moduleCode}`}
                         checked={hasAccess}
@@ -257,8 +256,7 @@ export function RoleDialog({
                       <div className="flex-1 min-w-0">
                         <Label
                           htmlFor={`module-${module.moduleCode}`}
-                          className="text-sm font-medium cursor-pointer"
-                        >
+                          className="text-sm font-medium cursor-pointer">
                           {module.moduleName}
                         </Label>
                         <p className="text-xs text-muted-foreground">
@@ -275,17 +273,26 @@ export function RoleDialog({
                               )
                             }
                             className="flex gap-4 mt-2"
-                            disabled={loading}
-                          >
+                            disabled={loading}>
                             <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="READ" id={`${module.moduleCode}-read`} />
-                              <Label htmlFor={`${module.moduleCode}-read`} className="text-xs cursor-pointer">
+                              <RadioGroupItem
+                                value="READ"
+                                id={`${module.moduleCode}-read`}
+                              />
+                              <Label
+                                htmlFor={`${module.moduleCode}-read`}
+                                className="text-xs cursor-pointer">
                                 Solo Lectura (R)
                               </Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="WRITE" id={`${module.moduleCode}-write`} />
-                              <Label htmlFor={`${module.moduleCode}-write`} className="text-xs cursor-pointer">
+                              <RadioGroupItem
+                                value="WRITE"
+                                id={`${module.moduleCode}-write`}
+                              />
+                              <Label
+                                htmlFor={`${module.moduleCode}-write`}
+                                className="text-xs cursor-pointer">
                                 Lectura y Escritura (RW)
                               </Label>
                             </div>
@@ -304,15 +311,13 @@ export function RoleDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
+              disabled={loading}>
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-            >
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
               {loading ? "Guardando..." : role ? "Actualizar" : "Crear"}
             </Button>
           </DialogFooter>

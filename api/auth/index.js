@@ -52,29 +52,29 @@ async function validateUserToken(token) {
   return null;
 }
 
-// Transformar respuesta de APIM a formato del frontend
 function transformUserProfileResponse(apiData) {
-  // Transformar modules array a objeto de permisos
   const permissions = {};
 
   if (apiData.modules && Array.isArray(apiData.modules)) {
-    apiData.modules.forEach(module => {
+    apiData.modules.forEach((module) => {
       const moduleCode = module.moduleCode.toLowerCase();
 
-      // Mapear códigos de módulo de APIM a códigos del frontend
       let frontendModuleCode = moduleCode;
-      if (moduleCode === 'int') {
-        frontendModuleCode = 'integrations';
-      } else if (moduleCode === 'usr' || moduleCode === 'users' || moduleCode === 'user') {
-        frontendModuleCode = 'users-roles';
+      if (moduleCode === "int") {
+        frontendModuleCode = "integrations";
+      } else if (
+        moduleCode === "usr" ||
+        moduleCode === "users" ||
+        moduleCode === "user"
+      ) {
+        frontendModuleCode = "users-roles";
       }
 
-      // Si tiene múltiples permisos, tomar el más alto (WRITE > READ)
       if (module.permissions && Array.isArray(module.permissions)) {
-        if (module.permissions.includes('WRITE')) {
-          permissions[frontendModuleCode] = 'WRITE';
-        } else if (module.permissions.includes('READ')) {
-          permissions[frontendModuleCode] = 'READ';
+        if (module.permissions.includes("WRITE")) {
+          permissions[frontendModuleCode] = "WRITE";
+        } else if (module.permissions.includes("READ")) {
+          permissions[frontendModuleCode] = "READ";
         }
       }
     });
@@ -95,10 +95,109 @@ function transformUserProfileResponse(apiData) {
   };
 }
 
+function transformUsersList(users) {
+  return users.map((user) => ({
+    userId: user.userId,
+    email: user.email,
+    displayName: user.displayName,
+    roleId: user.role.roleId,
+    status: user.status,
+    lastAccessAt: user.lastAccessAt,
+    createdAt: user.userCreatedAt,
+    createdBy: user.createdBy || "SYSTEM",
+    role: user.role,
+  }));
+}
+
+function transformUserResponse(user) {
+  return {
+    userId: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    roleId: user.roleId,
+    status: user.status,
+    lastAccessAt: user.lastAccessAt,
+    createdAt: user.createdAt,
+    createdBy: user.createdBy,
+    updatedAt: user.updatedAt,
+    updatedBy: user.updatedBy,
+  };
+}
+
+function transformRolesList(roles) {
+  return roles.map((role) => ({
+    ...role,
+    permissions: role.permissions || [],
+    permissionCount: role.permissions ? role.permissions.length : 0,
+    userCount: role.userCount || 0,
+  }));
+}
+
+function transformModulesList(modules) {
+  return modules.map((module) => ({
+    moduleId: module.id,
+    moduleCode: module.moduleCode,
+    moduleName: module.moduleName,
+    moduleDescription: module.moduleDescription,
+    iconName: module.iconName || "Layers",
+    routePattern: module.routePattern,
+    displayOrder: parseInt(module.displayOrder) || 0,
+    isActive: module.isActive === 1 || module.isActive === true,
+  }));
+}
+
+const TRANSFORMERS = {
+  "user-profile": {
+    GET: (data, context) => {
+      const transformed = transformUserProfileResponse(data);
+      return transformed;
+    },
+  },
+  users: {
+    GET: (data, context) => {
+      const transformed = transformUsersList(data);
+      return transformed;
+    },
+    POST: (data, context) => {
+      const transformed = transformUserResponse(data);
+      return transformed;
+    },
+  },
+  "users/:id": {
+    PUT: (data, context) => {
+      const transformed = transformUserResponse(data);
+      return transformed;
+    },
+  },
+  roles: {
+    GET: (data, context) => {
+      const transformed = transformRolesList(data);
+      return transformed;
+    },
+  },
+  modules: {
+    GET: (data, context) => {
+      const transformed = transformModulesList(data);
+      return transformed;
+    },
+  },
+};
+
+function getTransformer(route, method) {
+  if (TRANSFORMERS[route]?.[method]) {
+    return TRANSFORMERS[route][method];
+  }
+
+  if (route.startsWith("users/")) {
+    return TRANSFORMERS["users/:id"]?.[method];
+  }
+
+  return null;
+}
+
 module.exports = async function (context, req) {
   const route = context.bindingData.route || "";
 
-  // CORS headers
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -121,28 +220,21 @@ module.exports = async function (context, req) {
     const tokenData = await validateUserToken(userToken);
 
     if (!tokenData) {
-      context.log.error("❌ Token inválido o no proporcionado");
       context.res = {
         status: 401,
         headers,
         body: {
           error: "Unauthorized",
-          message: "Token inválido o expirado"
+          message: "Token inválido o expirado",
         },
       };
       return;
     }
 
-    context.log("✅ Usuario autenticado:", tokenData.email);
-    context.log("🔍 Route capturada:", route);
-    context.log("🔍 Query params:", req.query);
-
     // Obtener access token con Client Credentials para llamar a APIM
     const accessToken = await getAccessToken();
-    context.log("✅ Access Token obtenido");
 
     // Construir URL de APIM
-    // API_BASE_URL ya incluye "traductor-sis", solo agregamos /api/auth/
     let apiUrl = `${process.env.API_BASE_URL}/api/auth/${route}`;
 
     // Agregar query parameters del request original
@@ -156,7 +248,7 @@ module.exports = async function (context, req) {
       apiUrl += `?${queryString}`;
     }
 
-    context.log("📡 Llamando a APIM:", apiUrl);
+    context.log("Llamando a APIM:", apiUrl);
 
     // Hacer request a APIM con Access Token
     const response = await fetch(apiUrl, {
@@ -194,50 +286,9 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // Transformar respuesta según el endpoint
-    if (route === "user-profile") {
-      data = transformUserProfileResponse(data);
-      context.log("✅ Perfil de usuario transformado:", {
-        email: data.user.email,
-        role: data.role.roleName,
-        permissions: data.permissions
-      });
-    } else if (route === "users" && req.method === "GET") {
-      // Transformar lista de usuarios
-      data = data.map(user => ({
-        userId: user.userId,
-        email: user.email,
-        displayName: user.displayName,
-        roleId: user.role.roleId,
-        status: user.status,
-        lastAccessAt: user.lastAccessAt,
-        createdAt: user.userCreatedAt,
-        createdBy: user.createdBy || "SYSTEM",
-        role: user.role
-      }));
-      context.log("✅ Lista de usuarios transformada:", data.length, "usuarios");
-    } else if (route === "roles" && req.method === "GET") {
-      // Transformar lista de roles - asegurar que permissions sea un array
-      data = data.map(role => ({
-        ...role,
-        permissions: role.permissions || [],
-        permissionCount: role.permissions ? role.permissions.length : 0,
-        userCount: role.userCount || 0
-      }));
-      context.log("✅ Lista de roles transformada:", data.length, "roles");
-    } else if (route === "modules" && req.method === "GET") {
-      // Transformar lista de módulos
-      data = data.map(module => ({
-        moduleId: module.id,
-        moduleCode: module.moduleCode,
-        moduleName: module.moduleName,
-        moduleDescription: module.moduleDescription,
-        iconName: module.iconName || "Layers",
-        routePattern: module.routePattern,
-        displayOrder: parseInt(module.displayOrder) || 0,
-        isActive: module.isActive === 1 || module.isActive === true
-      }));
-      context.log("✅ Lista de módulos transformada:", data.length, "módulos");
+    const transformer = getTransformer(route, req.method);
+    if (transformer) {
+      data = transformer(data, context);
     }
 
     context.res = {
