@@ -80,16 +80,18 @@ function transformUserProfileResponse(apiData) {
     });
   }
 
+  const userObject = {
+    userId: apiData.userId,
+    email: apiData.email,
+    displayName: apiData.displayName,
+    roleId: apiData.role?.roleId,
+    status: apiData.status,
+    lastAccessAt: apiData.lastAccessAt,
+    createdAt: apiData.userCreatedAt,
+  };
+
   return {
-    user: {
-      userId: apiData.userId,
-      email: apiData.email,
-      displayName: apiData.displayName,
-      roleId: apiData.role?.roleId,
-      status: apiData.status,
-      lastAccessAt: apiData.lastAccessAt,
-      createdAt: apiData.userCreatedAt,
-    },
+    user: userObject,
     role: apiData.role,
     permissions: permissions,
   };
@@ -146,6 +148,10 @@ function transformModulesList(modules) {
   }));
 }
 
+function transformRolesPermissions(rolesData) {
+  return rolesData;
+}
+
 const TRANSFORMERS = {
   "user-profile": {
     GET: (data, context) => {
@@ -178,6 +184,12 @@ const TRANSFORMERS = {
   modules: {
     GET: (data, context) => {
       const transformed = transformModulesList(data);
+      return transformed;
+    },
+  },
+  "roles/permissions": {
+    GET: (data, context) => {
+      const transformed = transformRolesPermissions(data);
       return transformed;
     },
   },
