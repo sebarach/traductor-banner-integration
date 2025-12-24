@@ -35,6 +35,22 @@ export interface RoleWithStats extends Role {
   }[];
 }
 
+export interface RolePermissionModule {
+  moduleId: number;
+  moduleCode: string;
+  moduleName: string;
+  moduleDescription: string | null;
+  routePattern: string | null;
+  displayOrder: number | null;
+  permissions: PermissionType[];
+}
+
+export interface RoleWithPermissions {
+  roleId: number;
+  roleName: string;
+  modules: RolePermissionModule[];
+}
+
 export interface User {
   userId: number;
   email: string;

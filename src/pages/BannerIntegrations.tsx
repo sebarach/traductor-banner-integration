@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useMsal } from "@azure/msal-react";
 import AcademicPeriods from "./AcademicPeriods";
 import AcademicLevels from "./AcademicLevels";
 import ProgramRules from "./ProgramRules";
@@ -11,6 +12,14 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { createApiClient } from "@/utils/apiClient";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { LucideIcon } from "lucide-react";
 import {
   Calendar,
@@ -21,6 +30,8 @@ import {
   Users,
   GraduationCap,
   Search,
+  RefreshCw,
+  CheckCircle2,
 } from "lucide-react";
 
 type IntegrationModuleConfig = {
@@ -94,6 +105,10 @@ export default function BannerIntegrations() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState(integrationModules[0]?.value || "");
   const [showGrid, setShowGrid] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const { instance } = useMsal();
 
   const filteredModules = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -131,6 +146,61 @@ export default function BannerIntegrations() {
     setShowGrid(true);
   };
 
+  const handleSyncWithBanner = async () => {
+    setIsSyncing(true);
+    setSyncError(null);
+    try {
+      const apiClient = createApiClient(instance);
+
+      // Mapeo de módulo activo a endpoint de sincronización
+      const syncEndpoints: Record<string, string> = {
+        "buildings": "/banner/buildings/bulk",
+        "academic-periods": "/banner/academic-period/bulk",
+        "academic-levels": "/banner/academic-level/bulk",
+        "program-rules": "/banner/program-rule/bulk",
+        "persons": "/banner/person/bulk",
+        "instructors": "/banner/instructor/bulk",
+      };
+
+      const endpoint = syncEndpoints[activeTab];
+
+      if (!endpoint) {
+        setSyncError("No se encontró endpoint de sincronización para esta integración");
+        console.error("No se encontró endpoint de sincronización para:", activeTab);
+        return;
+      }
+
+      console.log("🔄 Sincronizando con endpoint:", endpoint);
+      console.log("📍 Módulo activo:", activeTab);
+
+      // Hacer POST al endpoint de sincronización correspondiente
+      await apiClient.post(endpoint, {});
+
+      // Mostrar diálogo de confirmación de éxito
+      setShowSyncDialog(true);
+    } catch (error: any) {
+      console.error("Error al sincronizar con Banner:", error);
+
+      // Mostrar mensaje de error detallado
+      let errorMessage = "Error desconocido al sincronizar";
+
+      if (error?.status === 400) {
+        errorMessage = "El endpoint de sincronización no está disponible o no acepta esta operación";
+      } else if (error?.status === 404) {
+        errorMessage = "El endpoint de sincronización no fue encontrado";
+      } else if (error?.status === 500) {
+        errorMessage = "Error interno del servidor al sincronizar";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      setSyncError(errorMessage);
+      setShowSyncDialog(true); // Mostrar diálogo con el error
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -157,6 +227,59 @@ export default function BannerIntegrations() {
           },
         ]}
       />
+
+      {/* Diálogo de confirmación */}
+      <Dialog open={showSyncDialog} onOpenChange={setShowSyncDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`p-3 rounded-full ${syncError ? "bg-red-100 dark:bg-red-900/30" : "bg-green-100 dark:bg-green-900/30"}`}>
+                {syncError ? (
+                  <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : (
+                  <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+                )}
+              </div>
+              <DialogTitle className="text-xl">
+                {syncError ? "Error en la Sincronización" : "Sincronización Iniciada"}
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-base space-y-3 pt-2">
+              {syncError ? (
+                <>
+                  <p className="font-medium text-foreground">
+                    No se pudo iniciar la sincronización con BANNER.
+                  </p>
+                  <p className="text-red-600 dark:text-red-400 font-medium">
+                    {syncError}
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    Por favor, verifique que el endpoint de sincronización esté configurado correctamente en el backend.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium text-foreground">
+                    La sincronización con BANNER ha sido iniciada exitosamente.
+                  </p>
+                  <p className="text-muted-foreground">
+                    Este proceso puede tardar varios minutos en completarse.
+                    Por favor, revise los logs del sistema para verificar el estado
+                    de la operación.
+                  </p>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end pt-4">
+            <Button onClick={() => setShowSyncDialog(false)}>
+              Entendido
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Tabs Card */}
       <Card className="overflow-hidden shadow-lg">
@@ -215,9 +338,19 @@ export default function BannerIntegrations() {
                   </p>
                 </div>
               </div>
-              <Button variant="outline" onClick={handleBackToGrid}>
-                Volver a integraciones
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleSyncWithBanner}
+                  disabled={isSyncing}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+                  {isSyncing ? "Sincronizando..." : "Sincronizar con BANNER"}
+                </Button>
+                <Button variant="outline" onClick={handleBackToGrid}>
+                  Volver a integraciones
+                </Button>
+              </div>
             </div>
           )}
 

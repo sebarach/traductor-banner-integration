@@ -3,6 +3,7 @@ import type { ApiError, ApiResponse } from "../types/api";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const APIM_SUBSCRIPTION_KEY = import.meta.env.VITE_APIM_SUBSCRIPTION_KEY;
+const API_WRITE_SECRET = import.meta.env.VITE_API_WRITE_SECRET;
 
 if (!API_BASE_URL) {
   throw new Error("VITE_API_BASE_URL no está configurada en .env");
@@ -77,12 +78,33 @@ export class ApiClient {
         requestHeaders["Ocp-Apim-Subscription-Key"] = APIM_SUBSCRIPTION_KEY;
       }
 
+      // Agregar secret de escritura para métodos POST, PUT, DELETE, PATCH
+      const isWriteOperation = ["POST", "PUT", "DELETE", "PATCH"].includes(method);
+      if (isWriteOperation && API_WRITE_SECRET) {
+        requestHeaders["x-secret-write"] = API_WRITE_SECRET;
+      }
+
+      // Log detallado del request
+      console.log("🌐 === REQUEST DEBUG ===");
+      console.log("URL:", url);
+      console.log("Method:", method);
+      console.log("Headers:", requestHeaders);
+      console.log("Body:", body);
+      console.log("x-secret-write presente:", !!requestHeaders["x-secret-write"]);
+      console.log("========================");
+
       // Realizar petición
       const response = await fetch(url, {
         method,
         headers: requestHeaders,
         body: body ? JSON.stringify(body) : undefined,
       });
+
+      // Log de la respuesta
+      console.log("📥 === RESPONSE DEBUG ===");
+      console.log("Status:", response.status);
+      console.log("OK:", response.ok);
+      console.log("========================");
 
       if (response.status === 401 && retry) {
         const accounts = this.msalInstance.getAllAccounts();
@@ -106,7 +128,21 @@ export class ApiClient {
         throw error;
       }
 
-      const data = await response.json();
+      // Intentar parsear JSON, manejar respuesta vacía
+      const text = await response.text();
+      let data;
+
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (parseError) {
+          console.warn("⚠️ Respuesta no es JSON válido:", text);
+          data = { message: "Success", rawResponse: text };
+        }
+      } else {
+        console.log("✅ Respuesta vacía (success sin body)");
+        data = { message: "Success" };
+      }
 
       return {
         data,
@@ -158,6 +194,12 @@ export class ApiClient {
 
       if (APIM_SUBSCRIPTION_KEY) {
         requestHeaders["Ocp-Apim-Subscription-Key"] = APIM_SUBSCRIPTION_KEY;
+      }
+
+      // Agregar secret de escritura para métodos POST, PUT, DELETE, PATCH
+      const isWriteOperation = ["POST", "PUT", "DELETE", "PATCH"].includes(method);
+      if (isWriteOperation && API_WRITE_SECRET) {
+        requestHeaders["x-secret-write"] = API_WRITE_SECRET;
       }
 
       const response = await fetch(url, {

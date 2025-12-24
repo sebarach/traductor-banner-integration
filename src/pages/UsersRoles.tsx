@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserManagementTab } from "@/components/users-roles/UserManagementTab";
 import { RolesPermissionsTab } from "@/components/users-roles/RolesPermissionsTab";
 import { useAuthorization } from "@/context/AuthorizationContext";
-import type { UserWithRole, RoleWithStats, Module } from "@/types/auth";
+import type { UserWithRole, RoleWithStats, Module, RoleWithPermissions } from "@/types/auth";
 import {
   Shield,
   Users,
@@ -24,6 +24,7 @@ export default function UsersRoles() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [roles, setRoles] = useState<RoleWithStats[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
+  const [rolesPermissions, setRolesPermissions] = useState<RoleWithPermissions[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("users");
@@ -41,15 +42,17 @@ export default function UsersRoles() {
     try {
       const apiClient = createApiClient(instance);
 
-      const [usersData, rolesData, modulesData] = await Promise.all([
+      const [usersData, rolesData, modulesData, rolesPermissionsData] = await Promise.all([
         apiClient.get<UserWithRole[]>("/auth/users"),
         apiClient.get<RoleWithStats[]>("/auth/roles"),
         apiClient.get<Module[]>("/auth/modules"),
+        apiClient.get<RoleWithPermissions[]>("/auth/roles/permissions"),
       ]);
 
       setUsers(usersData);
       setRoles(rolesData);
       setModules(modulesData);
+      setRolesPermissions(rolesPermissionsData);
     } catch (err: any) {
       setError(err.message || "Error al cargar datos");
       console.error("Error loading users/roles:", err);
@@ -154,6 +157,8 @@ export default function UsersRoles() {
             <RolesPermissionsTab
               roles={roles}
               modules={modules}
+              rolesPermissions={rolesPermissions}
+              users={users}
               onRefresh={loadData}
             />
           </TabsContent>

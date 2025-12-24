@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RoleDialog } from "./RoleDialog";
-import type { RoleWithStats, Module } from "@/types/auth";
+import type { RoleWithStats, Module, RoleWithPermissions, UserWithRole } from "@/types/auth";
 import {
   Shield,
   ShieldPlus,
@@ -21,12 +21,16 @@ import {
 interface RolesPermissionsTabProps {
   roles: RoleWithStats[];
   modules: Module[];
+  rolesPermissions: RoleWithPermissions[];
+  users: UserWithRole[];
   onRefresh: () => Promise<void>;
 }
 
 export function RolesPermissionsTab({
   roles,
   modules,
+  rolesPermissions,
+  users,
   onRefresh,
 }: RolesPermissionsTabProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -63,6 +67,10 @@ export function RolesPermissionsTab({
       "from-amber-500 to-orange-500",
     ];
     return colors[(roleId - 1) % colors.length];
+  };
+
+  const getUserCountByRole = (roleId: number) => {
+    return users.filter(user => user.roleId === roleId).length;
   };
 
   return (
@@ -122,41 +130,54 @@ export function RolesPermissionsTab({
               <div className="flex gap-4 text-sm">
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <Layers className="h-4 w-4" />
-                  <span>{role.permissionCount} módulos asignados</span>
+                  <span>
+                    {rolesPermissions.find(rp => rp.roleId === role.roleId)?.modules.length || 0} módulos asignados
+                  </span>
                 </div>
               </div>
 
               {/* Módulos Permitidos */}
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase text-muted-foreground">
-                  Módulos Permitidos:
+                  Módulos con Acceso:
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {role.permissions.map((perm, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2.5 py-1.5"
-                    >
-                      <div className="text-blue-600 dark:text-blue-400">
-                        {getIconComponent(
-                          modules.find(m => m.moduleCode === perm.moduleCode)?.iconName || "Layers"
-                        )}
-                      </div>
-                      <span className="text-xs font-medium">
-                        {perm.moduleName}
-                      </span>
-                      <Badge
-                        variant="outline"
-                        className={
-                          perm.permissionType === "WRITE"
-                            ? "text-xs border-green-500/50 text-green-600 dark:text-green-400 h-5"
-                            : "text-xs border-blue-500/50 text-blue-600 dark:text-blue-400 h-5"
-                        }
+                  {rolesPermissions
+                    .find(rp => rp.roleId === role.roleId)
+                    ?.modules.map((module) => (
+                      <div
+                        key={module.moduleId}
+                        className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2.5 py-1.5 border border-border/50"
                       >
-                        {perm.permissionType === "WRITE" ? "RW" : "R"}
-                      </Badge>
-                    </div>
-                  ))}
+                        <div className="text-blue-600 dark:text-blue-400">
+                          {getIconComponent(
+                            modules.find(m => m.moduleId === module.moduleId)?.iconName || "Layers"
+                          )}
+                        </div>
+                        <span className="text-xs font-medium">
+                          {module.moduleName}
+                        </span>
+                        <div className="flex gap-1">
+                          {module.permissions.map((perm, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="outline"
+                              className={
+                                perm === "WRITE"
+                                  ? "text-xs border-green-500/50 text-green-600 dark:text-green-400 h-5"
+                                  : "text-xs border-blue-500/50 text-blue-600 dark:text-blue-400 h-5"
+                              }
+                            >
+                              {perm === "WRITE" ? "RW" : "R"}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )) || (
+                    <p className="text-xs text-muted-foreground italic">
+                      Sin módulos asignados
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -164,7 +185,7 @@ export function RolesPermissionsTab({
               <div className="flex items-center gap-2 pt-2 border-t">
                 <UsersIcon className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  {role.userCount} {role.userCount === 1 ? "usuario asignado" : "usuarios asignados"}
+                  {getUserCountByRole(role.roleId)} {getUserCountByRole(role.roleId) === 1 ? "usuario asignado" : "usuarios asignados"}
                 </span>
               </div>
 

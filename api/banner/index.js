@@ -24,6 +24,24 @@ async function getAccessToken() {
   }
 }
 
+function handlePersonNotFoundError(route) {
+  return {
+    error: "PersonNotFound",
+    message: "No se encontro ninguna persona con el Banner ID proporcionado.",
+  };
+}
+
+const ERROR_HANDLERS = {
+  person: {
+    404: handlePersonNotFoundError,
+  },
+};
+
+function getErrorHandler(route, statusCode) {
+  const routePrefix = route.split("/")[0];
+  return ERROR_HANDLERS[routePrefix]?.[statusCode] || null;
+}
+
 module.exports = async function (context, req) {
   const route = context.bindingData.route || "";
 
@@ -47,7 +65,7 @@ module.exports = async function (context, req) {
   try {
     // OJITO: Usar solo X-User-Token porque Azure Static Web Apps intercepta Authorization
     const userToken = req.headers["x-user-token"];
-
+    const writeSecret = req.headers["x-secret-write"];
     // Validar autorización con middleware
     const authResult = await authorizeRequest(userToken, route, req.method);
 
@@ -84,13 +102,27 @@ module.exports = async function (context, req) {
       apiUrl += `?${queryString}`;
     }
 
+    // Construir headers para APIM
+    const apimHeaders = {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      "Ocp-Apim-Subscription-Key": process.env.APIM_SUBSCRIPTION_KEY || "",
+    };
+
+    // Pasar el header x-secret-write a APIM si existe
+    if (writeSecret) {
+      apimHeaders["x-secret-write"] = writeSecret;
+    }
+
+    context.log("📤 Headers enviados a APIM:", Object.keys(apimHeaders));
+    context.log(
+      "x-secret-write enviado a APIM:",
+      !!apimHeaders["x-secret-write"]
+    );
+
     const response = await fetch(apiUrl, {
       method: req.method || "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "Ocp-Apim-Subscription-Key": process.env.APIM_SUBSCRIPTION_KEY || "",
-      },
+      headers: apimHeaders,
       body:
         req.method !== "GET" && req.body ? JSON.stringify(req.body) : undefined,
     });
@@ -106,20 +138,19 @@ module.exports = async function (context, req) {
       }
     }
 
-    if (response.status === 404 && route.startsWith("person/")) {
-      context.res = {
-        status: 404,
-        headers,
-        body: {
-          error: "PersonNotFound",
-          message:
-            "No se encontro ninguna persona con el Banner ID proporcionado.",
-        },
-      };
-      return;
-    }
-
     if (!response.ok) {
+      const errorHandler = getErrorHandler(route, response.status);
+
+      if (errorHandler) {
+        const errorBody = errorHandler(route);
+        context.res = {
+          status: response.status,
+          headers,
+          body: errorBody,
+        };
+        return;
+      }
+
       context.res = {
         status: response.status,
         headers,
@@ -130,8 +161,6 @@ module.exports = async function (context, req) {
       };
       return;
     }
-
-    console.log("Respuesta recibida - Status:", response.status);
 
     context.res = {
       status: response.status,
